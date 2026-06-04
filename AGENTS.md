@@ -6,10 +6,10 @@
 Land a role at a frontier AI lab (FAIR, OpenAI, DeepMind, Anthropic, etc.) where writing custom GPU kernels is a core job function.
 
 ### What This Repo Is
-A structured, self-paced curriculum from zero GPU programming to writing production-grade Triton kernels. Every unit produces a real, benchmarked kernel.
+A structured, self-paced curriculum from zero GPU programming to production-grade GPU kernels. Each core concept is learned twice: once in CUDA C++ and once in Triton. Every unit produces real, benchmarked kernels.
 
 ### What This Repo Is NOT
-A place to get AI-generated kernel code. The student writes every kernel themselves. The AI provides: problem specs, doc materials, code reviews, and benchmark harnesses.
+A place to get AI-generated kernel code. The student writes every kernel themselves. The AI provides: problem specs, doc materials, code reviews, skeletons, and benchmark harnesses.
 
 ### Student Background
 - Graduate GPU hardware course at Georgia Tech (rusty, knowledge largely gone)
@@ -17,15 +17,16 @@ A place to get AI-generated kernel code. The student writes every kernel themsel
 - Wants to rebuild hands-on coding skills that AI tools have eroded
 
 ### Measurable Success Criteria
-1. Can implement FlashAttention from scratch in Triton (Unit 7)
+1. Can implement FlashAttention from scratch in Triton and explain the CUDA-equivalent execution model (Unit 7)
 2. Can open any production kernel from vLLM / FlashInfer / TensorRT-LLM and explain every line (Unit 8)
-3. Can autotune and benchmark kernels against PyTorch references
+3. Can benchmark CUDA and Triton kernels against PyTorch references
 4. Can read and reason about generated PTX code
+5. Can explain grids, blocks, warps, occupancy, memory hierarchy, and OS/driver overhead without hand-waving
 
 ## Key Facts
 
-- **Language:** Python + Triton (no raw CUDA C/C++)
-- **Frameworks:** Triton 3.x, PyTorch 2.x, numpy
+- **Languages:** CUDA C++ + Python + Triton
+- **Frameworks:** CUDA Toolkit 13.x, Triton 3.x, PyTorch 2.x, numpy
 - **Local GPU:** RTX 2060 Max-Q (Turing SM 7.5, 6 GB VRAM, compute capability 7.5)
 - **Cloud:** Can move to any NVIDIA GPU on Runpod (3090/4090/A100/H100) as needed
 - **OS:** CachyOS (Arch Linux)
@@ -38,9 +39,9 @@ A place to get AI-generated kernel code. The student writes every kernel themsel
 ```
 docs/               — Learning materials, one markdown file per unit
 src/
-  unit00/          — Bandwidth benchmark (Unit 0)
-  unit01/          — Vector add (Unit 1)
-  unit02/          — Fused activation (Unit 2)
+  unit00/          — Bandwidth benchmark in CUDA + Triton (Unit 0)
+  unit01/          — Vector add in CUDA + Triton (Unit 1)
+  unit02/          — Fused activation in CUDA + Triton (Unit 2)
   ...              — One subdirectory per unit
 pyproject.toml      — uv-managed project config
 .gitignore          — Ignores .venv, __pycache__, build artifacts
@@ -52,24 +53,25 @@ AGENTS.md           — This file
 .venv/              — Virtual environment with all dependencies
 ```
 
-## Curriculum (9 units)
+## Curriculum (Init + 9 units)
 
 | # | Unit | Skill |
 |---|------|-------|
-| 0 | GPU Internals + Triton Model | SIMT, memory hierarchy, tiles vs threads |
-| 1 | Vector Add | First kernel, `@triton.jit`, compile + inspect |
-| 2 | Fused ReLU/GeLU | Element-wise fusion, `@triton.autotune` |
-| 3 | Matrix Transpose | Shared memory tiling, bank conflicts |
-| 4 | Softmax | Two-pass, numerical stability |
+| Init 00 | Hardware + OS Prerequisites | CPU threads, OS boundary, driver overhead, benchmark hygiene |
+| 0 | GPU Internals + CUDA/Triton Model | SIMT, memory hierarchy, CUDA threads, Triton tiles |
+| 1 | Vector Add | First CUDA `__global__` and Triton `@triton.jit` kernels |
+| 2 | Fused ReLU/GeLU | Element-wise fusion, CUDA launch config, `@triton.autotune` |
+| 3 | Matrix Transpose | Shared memory tiling, bank conflicts, tiled pointer arithmetic |
+| 4 | Softmax | Two-pass reductions, numerical stability |
 | 5 | LayerNorm | Fused mean+variance, epilogue fusion |
-| 6 | Tiled GEMM | Canonical pattern, tensor core hints |
+| 6 | Tiled GEMM | Canonical tiling, tensor core hints |
 | 7 | FlashAttention | Online softmax, SRAM tiling |
 | 8 | Pick Your Battle | Reproduce a vLLM / FlashInfer kernel |
 
 ## How to Interact
 
-- **The student writes the code.** Do not write kernels for them — provide problem specs, hints, and reviews.
-- **The student writes kernel code only.** AI can write doc files, skeletons, tests, and benchmark harnesses.
+- **The student writes the kernel code.** Do not write CUDA or Triton kernels for them — provide problem specs, hints, and reviews.
+- **The student writes kernel code only.** AI can write doc files, skeletons, tests, build glue, and benchmark harnesses.
 - **Run all Python commands with `uv run python3 ...`** — never directly with `python` since there's no system-level install.
 - **All learning materials go in `docs/`** — chat-only explanations are not persistent and should be avoided.
 - **Use `triton.cdiv(a, b)` for ceiling division**, never manual `(a + b - 1) // b` style.

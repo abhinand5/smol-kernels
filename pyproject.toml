@@ -1,7 +1,7 @@
 [project]
 name = "smol-kernels"
 version = "0.1.0"
-description = "Add your description here"
+description = "A hands-on CUDA and Triton GPU kernel learning curriculum from bandwidth benchmarks to FlashAttention."
 requires-python = ">=3.14"
 dependencies = [
     "numpy>=2.4.6",
