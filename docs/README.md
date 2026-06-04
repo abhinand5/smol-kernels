@@ -1,6 +1,6 @@
-# CUDA / Triton Mastery — Frontier AI Lab Track
+# GPU Programming with Triton
 
-**Goal:** Reach a level where you can write, optimize, and land custom GPU kernels at a frontier AI lab (FAIR, OpenAI, DeepMind, Anthropic, etc.)
+A structured, hands-on curriculum for learning GPU kernel programming from scratch.
 
 **Hardware baseline:** RTX 2060 Max-Q (Turing SM 7.5, 6 GB VRAM). Can scale to cloud GPUs (A100/H100).
 
@@ -12,7 +12,7 @@
 
 | # | Unit | Skill | Deliverable |
 |---|------|-------|-------------|
-| 0 | GPU Internals + Triton Mental Model | SIMT, memory hierarchy, coalescing, occupancy, tiles vs threads | Bandwidth benchmark |
+| 0 | GPU Internals + Triton Mental Model | SIMT, memory hierarchy, coalescing, occupancy, tiles vs threads | [Bandwidth benchmark](unit-00-gpu-internals-and-triton-model.md) |
 | 1 | Vector Add | `@triton.jit`, `tl.load`/`tl.store`, program IDs, masking | Correct + benchmarked kernel |
 | 2 | Fused ReLU / GeLU | Element-wise fusion, `@triton.autotune` | Autotuned activation kernel |
 | 3 | Matrix Transpose | Shared memory tiling, bank conflicts | Tiled transpose kernel |
@@ -24,12 +24,20 @@
 
 ---
 
-## How We Work
+## Structure
 
-1. **I write the docs.** Each unit lives in `docs/unit-NN-*.md` with concept explanations, references, and the exercise spec.
-2. **You write the code.** Kernels go in `src/kernels/` alongside unit tests and benchmarks.
-3. **I review.** We run your kernel, compare to a PyTorch reference, and inspect the generated PTX.
-4. **You own it.** Don't move on until you can explain every line of your own code.
+```
+docs/           — Learning materials, one markdown file per unit
+src/unit00/     — Bandwidth benchmark
+src/unit01/     — Vector add
+src/unit02/     — Fused activation
+...             — One subdirectory per unit
+```
+
+Each unit includes:
+- A doc explaining the concept and exercise spec
+- A kernel implementation with benchmarks
+- A PyTorch reference for correctness checking
 
 ---
 
