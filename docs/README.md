@@ -1,3 +1,5 @@
+<img src="../assets/featured.png" alt="smol-kernels" width="100%">
+
 # GPU Programming with Triton
 
 A structured, hands-on curriculum for learning GPU kernel programming from scratch.
