@@ -48,13 +48,13 @@ body {
   background-image:
     radial-gradient(120% 80% at 80% -10%, rgba(255, 138, 30, 0.07), transparent 55%),
     radial-gradient(90% 70% at 0% 110%, rgba(79, 201, 192, 0.05), transparent 55%),
-    linear-gradient(rgba(150, 134, 108, 0.028) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(150, 134, 108, 0.028) 1px, transparent 1px);
+    linear-gradient(rgba(154, 138, 110, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(154, 138, 110, 0.06) 1px, transparent 1px);
   background-size:
     100% 100%,
     100% 100%,
-    64px 64px,
-    64px 64px;
+    56px 56px,
+    56px 56px;
   background-position:
     0 0,
     0 0,
