@@ -27,8 +27,7 @@ A place to get AI-generated kernel code. The student writes every kernel themsel
 
 - **Languages:** CUDA C++ + Python + Triton
 - **Frameworks:** CUDA Toolkit 13.x, Triton 3.x, PyTorch 2.x, numpy
-- **Local GPU:** RTX 2060 Max-Q (Turing SM 7.5, 6 GB VRAM, compute capability 7.5)
-- **Cloud:** Can move to any NVIDIA GPU on Runpod (3090/4090/A100/H100) as needed
+- **Hardware:** GPU-agnostic — runs on any CUDA GPU. Run `uv run python3 scripts/calibrate_gpu.py` to generate `docs/my-gpu-spec.md` (gitignored); all roofline targets recalibrate to it. Author's reference card: RTX 2060 Max-Q (Turing SM 7.5, 6 GB). Re-run the calibrator after switching GPUs (e.g. cloud 3090/4090/A100/H100).
 - **OS:** CachyOS (Arch Linux)
 - **Package manager:** `uv` only — never use pip or venv directly
 - **Python:** 3.14.4
@@ -38,6 +37,8 @@ A place to get AI-generated kernel code. The student writes every kernel themsel
 
 ```
 docs/               — Learning materials, one markdown file per unit
+                      (+ reference-hardware-spec-sheet.md; my-gpu-spec.md is generated/gitignored)
+scripts/            — calibrate_gpu.py (generates the personal GPU spec sheet)
 src/
   unit00/          — Bandwidth benchmark in CUDA + Triton (Unit 0)
   unit01/          — Vector add in CUDA + Triton (Unit 1)
@@ -72,17 +73,20 @@ AGENTS.md           — This file
 - **The student writes the kernel code.** Do not write CUDA or Triton kernels for them — provide problem specs, hints, and reviews.
 - **The student writes kernel code only.** AI can write doc files, skeletons, tests, build glue, and benchmark harnesses.
 - **Run all Python commands with `uv run python3 ...`** — never directly with `python` since there's no system-level install.
+- **Calibrate before grading benchmarks.** Ensure `docs/my-gpu-spec.md` exists (`uv run python3 scripts/calibrate_gpu.py`); every performance target is relative to it, not to any fixed card. If the learner is on a new GPU, re-run it.
 - **All learning materials go in `docs/`** — chat-only explanations are not persistent and should be avoided.
 - **Use `triton.cdiv(a, b)` for ceiling division**, never manual `(a + b - 1) // b` style.
 - **Before substantive work, consult the advisor.** The student explicitly requested an advisor review loop.
 - **Commit changes between units** — each unit should be a clean checkpoint.
-- **Keep kernel tensor sizes reasonable** — 6 GB VRAM. 32M elements (128 MB floats) is safe. Don't allocate multiple giant tensors at once.
+- **Keep kernel tensor sizes within the learner's VRAM** (see `docs/my-gpu-spec.md`). On the 6 GB reference card, 32M elements (128 MB floats) is safe; scale to the actual GPU. Don't allocate multiple giant tensors at once.
 - **Do not modify or delete `docs/` files** — they are the persistent curriculum. Update them only when adding new units.
 - **Delete `main.py`** — it's the `uv init` stub, not part of the project.
 
-## Hardware Constraints
+## Hardware Calibration (the curriculum is GPU-agnostic)
 
-- Tensor cores: FP16/INT8/INT4 only — **no TF32, no BF16, no FP8** (TF32/BF16 are Ampere SM 8.0+, FP8 is Hopper/Ada). Turing tensor-core GEMM/attention uses FP16 inputs with FP16 or FP32 accumulate.
-- Shared memory: 64 KB / SM max
-- VRAM: 6 GB — keep tensor sizes reasonable (32M elements = 128 MB is fine)
-- When moving to cloud GPUs, update this file with the new compute capability
+This project is **not** tied to one card. The calibrator measures the learner's actual GPU and writes `docs/my-gpu-spec.md`, which every unit's roofline math and "what good looks like" targets reference.
+
+- **Procedure:** `uv run python3 scripts/calibrate_gpu.py` → writes `docs/my-gpu-spec.md` (gitignored). It measures achievable bandwidth + fp32/fp16 GEMM throughput, derives the two roofline ridges, and reads device facts (compute capability, VRAM, shared-memory budget, tensor-core data types). Library ops only — safe to run before any kernel exists.
+- **Use it:** read `docs/my-gpu-spec.md` for the learner's ceilings; never hardcode card-specific numbers (264 GB/s, ridge 17, 64 KB SRAM, FP16-only tensor cores) into reviews or guidance — those are the *reference card* and live in `docs/reference-hardware-spec-sheet.md` as a labeled example.
+- **Tensor-core data types vary by architecture:** FP16 (all ≥ Volta), +TF32/BF16 (Ampere 8.0+), +FP8 (Ada 8.9 / Hopper 9.0), +FP4/FP6 (Blackwell). The calibrator detects the learner's set; use the highest-throughput dtype their card supports for `tl.dot`/`wmma`.
+- **After switching GPUs:** just re-run the calibrator. No doc edits needed.

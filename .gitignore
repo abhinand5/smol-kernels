@@ -11,3 +11,6 @@ wheels/
 
 # Tooling
 .serena/
+
+# Personal, machine-generated GPU spec (run scripts/calibrate_gpu.py)
+docs/my-gpu-spec.md

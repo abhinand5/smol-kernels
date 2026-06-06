@@ -8,7 +8,7 @@ The rule is simple: **learn the same idea twice** — once in CUDA C++ and once 
 
 CUDA teaches the hardware model explicitly. Triton teaches the modern tile/program model used in ML kernel work.
 
-**Hardware baseline:** RTX 2060 Max-Q (Turing SM 7.5, 6 GB VRAM). Can scale to cloud GPUs later.
+**Works on any CUDA GPU.** Step one is to calibrate — `uv run python3 scripts/calibrate_gpu.py` measures your card and writes `docs/my-gpu-spec.md`, and every roofline target recalibrates to it. The units use an RTX 2060 Max-Q for concrete worked examples; your numbers come from your own spec.
 
 **Tools:** CUDA C++ + Triton 3.x + PyTorch 2.x. Python is used for harnesses, correctness checks, and benchmarks.
 
@@ -28,7 +28,7 @@ CUDA teaches the hardware model explicitly. Triton teaches the modern tile/progr
 | 7 | FlashAttention | online softmax, SRAM tiling | production-style attention tiling | [FlashAttention](unit-07-flash-attention.md) |
 | 8 | Pick Your Battle | read CUDA-style production kernels | reproduce vLLM / FlashInfer-style kernel | [Pick your battle](unit-08-pick-your-battle.md) |
 
-> **Hardware reference:** all roofline math, bandwidth ceilings, and performance targets come from the [RTX 2060 Max-Q spec sheet](reference-hardware-spec-sheet.md) — the single source of truth. Moving to a cloud GPU? Update that one file.
+> **Hardware:** the curriculum is GPU-agnostic. Run `uv run python3 scripts/calibrate_gpu.py` to generate your personal [spec sheet](reference-hardware-spec-sheet.md) (`docs/my-gpu-spec.md`); roofline math and targets recalibrate to your card. Switching GPUs? Just re-run it.
 
 ---
 
@@ -57,7 +57,7 @@ Each unit should eventually include:
 - The student writes kernel code.
 - AI may write docs, specs, skeletons, reviews, and benchmark harnesses.
 - Use `uv run python3 ...` for Python commands.
-- Keep tensor sizes reasonable for 6 GB VRAM.
+- Keep tensor sizes within your VRAM (see `docs/my-gpu-spec.md` after calibrating).
 - Prefer measured results over intuition.
 - Commit between units.
 
