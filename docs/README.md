@@ -18,16 +18,17 @@ CUDA teaches the hardware model explicitly. Triton teaches the modern tile/progr
 
 | # | Unit | CUDA focus | Triton focus | Deliverable |
 |---|------|------------|--------------|-------------|
-| Init 00 | Hardware + OS Prerequisites | CPU threads, OS boundary, driver/toolchain | Python/CUDA environment sanity | [Prerequisite checklist](init-00-hardware-os-prerequisites.md) |
-| 0 | GPU Internals + Kernel Mental Model | grids, blocks, threads, warps, global memory | programs, tiles, masks, `tl.arange` | [Bandwidth benchmark](unit-00-gpu-internals-and-triton-model.md) |
-| 1 | Vector Add | first `__global__` kernel | first `@triton.jit` kernel | Correct + benchmarked kernels |
-| 2 | Fused ReLU / GeLU | elementwise fusion | autotuned block sizes | Fused activation kernels |
-| 3 | Matrix Transpose | shared memory tiling, bank conflicts | tiled pointer arithmetic | Tiled transpose kernels |
-| 4 | Softmax | reductions and numerical stability | row-wise tile reductions | Stable softmax kernels |
-| 5 | LayerNorm | fused mean/variance | fused reduction + epilogue | Norm kernels |
-| 6 | Tiled GEMM | thread blocks, shared memory, tensor cores | block matmul, `tl.dot` | GEMM kernels |
-| 7 | FlashAttention | online softmax, SRAM tiling | production-style attention tiling | Attention kernels |
-| 8 | Pick Your Battle | read CUDA-style production kernels | reproduce vLLM / FlashInfer-style kernel | Production kernel review + reproduction |
+| 0 | GPU Foundations + Bandwidth | the machine, SIMT, memory hierarchy, roofline, coalescing | programs, tiles, masks, `tl.arange` | [GPU foundations + bandwidth benchmark](unit-00-gpu-internals-and-triton-model.md) |
+| 1 | Vector Add | first `__global__` kernel | first `@triton.jit` kernel | [Vector add](unit-01-vector-add.md) |
+| 2 | Fused ReLU / GeLU | elementwise fusion | autotuned block sizes | [Fused activation](unit-02-fused-activation.md) |
+| 3 | Matrix Transpose | shared memory tiling, bank conflicts | tiled pointer arithmetic | [Matrix transpose](unit-03-matrix-transpose.md) |
+| 4 | Softmax | reductions and numerical stability | row-wise tile reductions | [Softmax](unit-04-softmax.md) |
+| 5 | LayerNorm | fused mean/variance | fused reduction + epilogue | [LayerNorm](unit-05-layernorm.md) |
+| 6 | Tiled GEMM | thread blocks, shared memory, tensor cores | block matmul, `tl.dot` | [Tiled GEMM](unit-06-tiled-gemm.md) |
+| 7 | FlashAttention | online softmax, SRAM tiling | production-style attention tiling | [FlashAttention](unit-07-flash-attention.md) |
+| 8 | Pick Your Battle | read CUDA-style production kernels | reproduce vLLM / FlashInfer-style kernel | [Pick your battle](unit-08-pick-your-battle.md) |
+
+> **Hardware reference:** all roofline math, bandwidth ceilings, and performance targets come from the [RTX 2060 Max-Q spec sheet](reference-hardware-spec-sheet.md) — the single source of truth. Moving to a cloud GPU? Update that one file.
 
 ---
 
