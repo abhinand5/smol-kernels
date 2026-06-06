@@ -1,6 +1,6 @@
 # Unit 06: Tiled GEMM
 
-> The unit everything was building toward. For five units you optimized memory traffic because you had no choice — every kernel sat far left of the roofline ridge. GEMM is the first kernel where **tiling raises arithmetic intensity** until you cross the ridge into the compute-bound region — and the ceiling that suddenly matters is not the 4.55 TFLOP/s FP32 line, but the ~36 TFLOP/s **tensor-core** line.
+> The unit everything was building toward. For five units you optimized memory traffic because you had no choice — every kernel sat far left of the roofline ridge. GEMM is the first kernel where **tiling raises arithmetic intensity** until you cross the ridge into the compute-bound region — and the ceiling that suddenly matters is no longer your FP32 line but your much higher **tensor-core** line. (Reference GPU figures below; use your own from `docs/my-gpu-spec.md`.)
 
 General matrix multiply:
 
@@ -41,10 +41,10 @@ intensity         ≈ 2K / 8K = 0.25 FLOP/byte
 intensity ≈ 2T³ / (2T² * 4 bytes) = T / 4 FLOP/byte
 ```
 
-**Intensity scales with tile size `T`.** This is the whole point. The ridge is 17, so:
+**Intensity scales with tile size `T`.** This is the whole point. On the reference GPU the FP32 ridge is ~17 (use yours from `docs/my-gpu-spec.md`), so:
 
 ```text
-T / 4 > 17   ⇒   T > 68
+T / 4 > 17   ⇒   T > 68      (reference GPU; your crossover scales with your ridge)
 ```
 
 A `T = 32` tile gives intensity ~8 (still slightly memory-bound). Add **register blocking** — each thread computes a small `R×R` micro-tile of outputs, multiplying the effective tile and reuse — and you push intensity well past the ridge. *That* is how you climb the roofline: tiling and register-blocking convert a memory-bound problem into a compute-bound one by manufacturing reuse.
@@ -57,14 +57,14 @@ A `T = 32` tile gives intensity ~8 (still slightly memory-bound). Add **register
 
 Once you are compute-bound, *which* compute ceiling applies?
 
-| Path | Peak | When |
+| Path | Peak (reference GPU) | When |
 |---|---|---|
 | FP32 CUDA cores | ~4.55 TFLOP/s | your hand-written FP32 GEMM |
-| FP16 tensor cores | ~36 TFLOP/s | `wmma` / `tl.dot` on FP16 inputs |
+| FP16 tensor cores | ~36 (fp16-acc) / ~18 (fp32-acc) TFLOP/s | `wmma` / `tl.dot` on FP16 inputs |
 
-That is an **~8× gap**. A perfectly optimized FP32 GEMM tops out at ~4.55 TFLOP/s; the tensor cores do matrix-multiply-accumulate on FP16 tiles at ~36. This gap is the entire reason tensor cores exist and the reason mixed-precision training is universal. Your hand-tiled FP32 kernel is the *learning* target; the tensor-core path is the *performance* target.
+That is a **large gap** — multiples, not percentages. A perfectly optimized FP32 GEMM tops out at the FP32 line; the tensor cores do matrix-multiply-accumulate far faster. This gap is the entire reason tensor cores exist and the reason mixed-precision training is universal. Your `docs/my-gpu-spec.md` lists both of *your* ceilings. Your hand-tiled FP32 kernel is the *learning* target; the tensor-core path is the *performance* target.
 
-**Turing constraint (from the spec sheet): tensor cores take FP16 (or INT8/INT4) — NOT TF32, NOT BF16.** On Ampere you'd reach for TF32; here it does not exist. So the tensor-core path on this machine is FP16 inputs with FP16 or FP32 accumulate. Use FP32 accumulate for accuracy; expect ~18 TFLOP/s with the GeForce FP32-accumulate cap, ~36 with FP16 accumulate.
+**Dtype constraint — check `docs/my-gpu-spec.md`:** tensor cores only accept certain data types, and which ones depends on your architecture. On the reference Turing card that is **FP16 only** (no TF32/BF16/FP8); on Ampere you'd use **TF32/BF16**; on Ada/Hopper, **FP8**; on Blackwell, **FP4/FP6**. Use the highest-throughput dtype *your* card supports for `tl.dot` / `wmma`, and **accumulate in FP32** for accuracy. (On the reference card, `torch.matmul` fp16 measures ~18.5 TFLOP/s — not the ~36 fp16-accumulate figure — because GeForce Turing caps fp32-accumulate tensor throughput at half rate. Your measured number is the one that counts.)
 
 ---
 
@@ -128,7 +128,7 @@ Write, in order, and benchmark each:
 
 Requirements: handle non-tile-divisible `M`, `N`, `K`; verify against `torch.matmul`; report TFLOP/s as `2*M*N*K / seconds / 1e12`.
 
-Sizes (keep within 6 GB): square `M=N=K ∈ {1024, 2048, 4096}`. At 4096 fp32, each matrix is 64 MB — fine.
+Sizes (keep within your VRAM): square `M=N=K ∈ {1024, 2048, 4096}`. At 4096 fp32, each matrix is 64 MB — fine on the 6 GB reference card; scale to yours.
 
 > `torch.matmul` (cuBLAS) is the baseline and your north star. Reaching a respectable fraction of it is the goal.
 
@@ -158,10 +158,10 @@ Report per implementation:
 | shape | `M×N×K` |
 | median time | µs |
 | throughput | `2*M*N*K / s / 1e12` TFLOP/s |
-| efficiency | vs the **relevant** ceiling (FP32 → 4.55; tensor → ~36/18) **and** vs cuBLAS |
+| efficiency | vs your **relevant** measured ceiling (FP32 or tensor, `docs/my-gpu-spec.md`) **and** vs cuBLAS |
 | correctness | rel error vs `torch.matmul` (looser tol for fp16) |
 
-Always state which ceiling you grade against. An FP32 kernel at 4 TFLOP/s is ~88% of FP32 peak — excellent. The *same* 4 TFLOP/s for a tensor-core kernel is ~11% of the FP16 ceiling — a failure. Same number, opposite verdict, because the ceiling differs.
+Always state which ceiling you grade against. An FP32 kernel hitting most of *your* FP32 ceiling is excellent. The *same absolute* TFLOP/s graded against your (much higher) tensor-core ceiling is a failure. Same number, opposite verdict, because the ceiling differs — which is exactly why the calibrator records both.
 
 ---
 
@@ -169,8 +169,8 @@ Always state which ceiling you grade against. An FP32 kernel at 4 TFLOP/s is ~88
 
 - **Naive:** memory-bound, a small fraction of peak. Expected.
 - **Tiled:** several× faster; now compute-bound-ish in FP32.
-- **Register-blocked FP32:** a large fraction of the 4.55 TFLOP/s FP32 ceiling (70%+ is strong for hand-written).
-- **Triton FP16 / tensor cores:** multiples of the FP32 result, graded against ~18–36 TFLOP/s, and within striking distance of cuBLAS (matching cuBLAS is hard; 60–80% is a real achievement).
+- **Register-blocked FP32:** a large fraction of your FP32 ceiling (70%+ is strong for hand-written).
+- **Triton FP16 / tensor cores:** multiples of the FP32 result, graded against your measured tensor-core ceiling, and within striking distance of cuBLAS (matching cuBLAS is hard; 60–80% is a real achievement).
 - You can state, for any result, which ceiling applies and why.
 
 ---
@@ -179,11 +179,11 @@ Always state which ceiling you grade against. An FP32 kernel at 4 TFLOP/s is ~88
 
 ### Grading against the wrong ceiling
 
-The headline trap. FP32 and tensor-core kernels have different ceilings (4.55 vs ~36). Always name which one.
+The headline trap. FP32 and tensor-core kernels have different ceilings (often a multiple apart). Always name which one, and read both from `docs/my-gpu-spec.md`.
 
-### Reaching for TF32 on Turing
+### Using a dtype your tensor cores don't support
 
-TF32 is Ampere+. On this GPU `tl.dot`'s TF32 path does nothing useful; use FP16. (Fix any tutorial that says otherwise — see the spec sheet.)
+The dtype that engages tensor cores depends on your architecture (TF32/BF16 need Ampere+, FP8 needs Ada/Hopper, FP4 needs Blackwell). On the reference Turing card, only FP16 works — a TF32 `tl.dot` does nothing useful there. Check `docs/my-gpu-spec.md` and use the highest-throughput dtype your card actually supports. (Fix any tutorial that assumes a different architecture.)
 
 ### Forgetting the second `__syncthreads()`
 
@@ -220,7 +220,7 @@ src/unit06/
 2. Show that tiled GEMM has intensity ~`T/4`, and find the tile size that crosses the ridge.
 3. Why does register blocking raise throughput beyond plain shared-memory tiling?
 4. What are the two compute ceilings on this GPU, and what is the gap between them?
-5. Why can this GPU's tensor cores not use TF32, and what do you use instead?
+5. Which data types do *your* tensor cores support (check `docs/my-gpu-spec.md`), and which would you pick for `tl.dot`?
 6. Why must you accumulate in FP32 even with FP16 inputs?
 7. What do `num_stages` / software pipelining do in the Triton kernel?
 8. Why is the *same* TFLOP/s number a success for FP32 and a failure for tensor cores?

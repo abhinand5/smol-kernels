@@ -62,12 +62,12 @@ You moved **12 instead of 20 bytes** — a 40% traffic cut — for the *exact sa
 
 Plain activation, single input and output: `8` bytes/element (read 4, write 4).
 
-| Function | FLOPs/elem (approx) | Intensity | vs ridge (17) |
+| Function | FLOPs/elem (approx) | Intensity | vs ridge (~17, reference GPU) |
 |---|---|---|---|
 | ReLU | ~1 | ~0.13 FLOP/byte | memory-bound (~130× left) |
 | GeLU (tanh) | ~12 + 1 transcendental | ~1.5 FLOP/byte | memory-bound (~11× left) |
 
-Both are memory-bound. But notice GeLU moved an order of magnitude *toward* the ridge — the first time in this curriculum that arithmetic intensity is not negligible. It is still below 17, so memory traffic should still dominate... except for one thing.
+Both are memory-bound on any GPU (check your ridge in `docs/my-gpu-spec.md`). But notice GeLU moved an order of magnitude *toward* the ridge — the first time in this curriculum that arithmetic intensity is not negligible. It is still well below the ridge, so memory traffic should still dominate... except for one thing.
 
 ---
 
@@ -171,7 +171,7 @@ Report, per implementation:
 | variant | unfused (2 kernels) / fused (1 kernel) |
 | median time | µs |
 | effective bandwidth | `bytes_moved / s / 1e9` (use the *correct* byte count per variant) |
-| efficiency | vs 264 GB/s |
+| efficiency | vs your measured bandwidth (`docs/my-gpu-spec.md`) |
 | correctness | max abs error vs PyTorch |
 
 Mandatory experiments:

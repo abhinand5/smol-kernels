@@ -91,7 +91,7 @@ Produce a written annotation (in `src/unit08/NOTES.md`) of one kernel that:
 - answers all eight §8.3 questions
 - walks the kernel in execution order, explaining every non-trivial line
 - names the clever bit explicitly
-- notes the hardware assumptions and how they'd change on this 2060 vs the kernel's intended target (often an A100/H100)
+- notes the hardware assumptions and how they'd change on your GPU vs the kernel's intended target (often an A100/H100)
 
 This document is the proof of success criterion #2: *open any production kernel and explain every line.*
 
@@ -141,7 +141,7 @@ Annotate the deep-end kernel; reproduce the approachable one. A finished RMSNorm
 
 ### Ignoring the hardware mismatch
 
-Production kernels target A100/H100. Their block sizes and SRAM assumptions may be wrong for your 64 KB Turing card. Note where you had to adapt.
+Production kernels target A100/H100. Their block sizes and SRAM assumptions may be wrong for your card's shared-memory budget (`docs/my-gpu-spec.md`). Note where you had to adapt.
 
 ### Skipping the PyTorch correctness check
 
@@ -174,7 +174,7 @@ For the kernel you chose:
 7. What is autotuned or templated, and what hardware assumptions are baked in?
 8. What is the one clever, non-obvious trick?
 9. Where is your reproduction slower, and exactly why?
-10. How would this kernel change if retargeted from an A100 to this 2060 Max-Q?
+10. How would this kernel change if retargeted from an A100 to your GPU?
 
 ---
 
@@ -185,7 +185,7 @@ You have, twice over, built every core GPU kernel pattern from memcpy to FlashAt
 - Implement the FlashAttention **backward** pass (much harder than forward).
 - Write a real CUDA FlashAttention with `wmma` tensor cores.
 - Reproduce a paged-attention decode kernel end to end.
-- Move to a cloud A100/H100 (update the [spec sheet](reference-hardware-spec-sheet.md)), and learn what changes when SRAM, TF32/BF16/FP8 tensor cores, and async copy (`cp.async`, TMA) enter the picture.
+- Move to a cloud A100/H100 (re-run `uv run python3 scripts/calibrate_gpu.py` to recalibrate), and learn what changes when more SRAM, TF32/BF16/FP8 tensor cores, and async copy (`cp.async`, TMA) enter the picture.
 - Read the CUTLASS / CuTe abstractions and the latest FlashAttention/FlashInfer source.
 
 The curriculum ends; the craft does not.

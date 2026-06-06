@@ -76,15 +76,15 @@ For autoregressive models, query `i` may not attend to key `j > i`. In the tiled
 
 ---
 
-## 7.4 The Turing Constraint: SRAM Is the Budget
+## 7.4 The SRAM Budget Is Your Constraint
 
-FlashAttention's block sizes are bounded by on-chip SRAM. From the spec sheet, this GPU has **up to 64 KB shared memory per SM** — small. You must keep `Q_i`, `K_j`, `V_j`, and the `S_ij` scratch simultaneously resident:
+FlashAttention's block sizes are bounded by on-chip SRAM (shared memory). Check **your** budget in `docs/my-gpu-spec.md` — the reference Turing card has **up to 64 KB per block**, which is small; Ampere/Hopper offer far more (up to ~164–228 KB). You must keep `Q_i`, `K_j`, `V_j`, and the `S_ij` scratch simultaneously resident:
 
 ```text
 SRAM per block ≈ (BLOCK_M + 2*BLOCK_N) * d * dtype_bytes + scratch
 ```
 
-So `BLOCK_M`, `BLOCK_N`, and `d` are constrained by 64 KB. Use FP16 for the resident tiles (half the bytes), keep `d ≤ 64` comfortable, and tune block sizes down relative to what an A100 (164 KB+) tutorial assumes. **Do not copy A100 block sizes** — they will fail to launch (out of shared memory) or spill. This hardware-awareness *is* the unit.
+So `BLOCK_M`, `BLOCK_N`, and `d` are constrained by your shared-memory size. Use FP16 for the resident tiles (half the bytes), keep `d` modest, and **size block dimensions to your budget**. A tutorial tuned for a big-SRAM A100 (164 KB+) will fail to launch or spill on a 64 KB card; conversely, a 64 KB-tuned kernel leaves throughput on the table on a Hopper. Sizing to *your* hardware *is* the unit.
 
 ---
 
@@ -98,7 +98,7 @@ Write a Triton FlashAttention **forward** kernel that:
 - applies the online-softmax rescale each iteration
 - normalizes by `l` and writes `O` once
 - supports a `causal` flag (skip + diagonal-mask)
-- respects the 64 KB SRAM budget when choosing block sizes
+- respects your SRAM budget (`docs/my-gpu-spec.md`) when choosing block sizes
 
 Structural skeleton (shape, not solution):
 
@@ -131,7 +131,7 @@ Start non-causal, get it bit-correct against SDPA, *then* add causal.
 A full hand-written CUDA FlashAttention is genuinely hard (warp-level MMA, careful SRAM management). For this unit you must be able to **explain**, precisely:
 
 - how the Triton program maps to a CUDA block (one query block per block/CTA)
-- where `Q_i`, `K_j`, `V_j` live (shared memory / registers) and how the 64 KB budget constrains tiles
+- where `Q_i`, `K_j`, `V_j` live (shared memory / registers) and how your shared-memory budget constrains tiles
 - how the two GEMMs would use `wmma` tensor-core fragments
 - where `__syncthreads()` barriers sit in the streaming loop
 - why the online recurrence avoids the `N×N` HBM round-trips that the naive CUDA version pays
@@ -156,7 +156,7 @@ Report per implementation:
 
 Mandatory experiments:
 
-1. **Memory footprint vs `N`.** Plot naive attention's peak memory growing as `N²` while flash stays linear. Then push the workload until naive actually OOMs on 6 GB while flash still runs — at single-head fp32 you need a large `N` (the `N×N` scores reach ~1 GB only around `N≈16k`), so either sweep `N` that high or scale `batch × heads` to force the OOM sooner. The point is the *growth curve* (`N²` vs `N`) and the OOM it eventually causes, not a specific small `N`.
+1. **Memory footprint vs `N`.** Plot naive attention's peak memory growing as `N²` while flash stays linear. Then push the workload until naive actually OOMs on *your* VRAM while flash still runs — at single-head fp32 the `N×N` scores reach ~1 GB only around `N≈16k`, so either sweep `N` that high or scale `batch × heads` to force the OOM sooner (smaller-VRAM cards OOM earlier). The point is the *growth curve* (`N²` vs `N`) and the OOM it eventually causes, not a specific `N`.
 2. **Causal vs non-causal** throughput — confirm the ~2× from block skipping.
 
 ---
@@ -164,8 +164,8 @@ Mandatory experiments:
 ## 7.8 What Good Looks Like
 
 - Matches SDPA to fp16 tolerance, causal and non-causal.
-- Pushed far enough (large `N`, or scaled `batch × heads`), naive attention OOMs on the 6 GB card at a point where flash still runs comfortably — the `N²`-vs-`N` memory story, demonstrated rather than asserted.
-- Flash throughput a solid fraction of SDPA (PyTorch's SDPA may dispatch its own fused kernel — matching it within a few× on Turing is a real result).
+- Pushed far enough (large `N`, or scaled `batch × heads`), naive attention OOMs on your card at a point where flash still runs comfortably — the `N²`-vs-`N` memory story, demonstrated rather than asserted.
+- Flash throughput a solid fraction of SDPA (PyTorch's SDPA may dispatch its own fused kernel — matching it within a few× on a consumer GPU is a real result).
 - You can explain *why* it is faster: not fewer FLOPs, but vastly less HBM traffic. If you say "it does less math," you have missed the unit.
 
 ---
@@ -176,9 +176,9 @@ Mandatory experiments:
 
 The denominator `l` **and** the accumulator `O` must both be multiplied by `exp(m_old - m_new)` every time the max updates. Rescale one and not the other and the output is silently wrong.
 
-### Copying A100 block sizes
+### Copying another GPU's block sizes
 
-64 KB SRAM on Turing is the hard limit. Big tutorial block sizes fail to launch or spill here. Size to *your* hardware (§7.4).
+Your SRAM budget is the hard limit. Block sizes tuned for a big-SRAM A100/H100 fail to launch or spill on a smaller card; sizes tuned for 64 KB underuse a bigger one. Size to *your* hardware (§7.4).
 
 ### Thinking the speedup is fewer FLOPs
 
@@ -217,7 +217,7 @@ src/unit07/
 4. Why must the output accumulator `O` be rescaled, not just the denominator `l`?
 5. Does FlashAttention do fewer FLOPs than naive attention? Then why is it faster?
 6. Which two `tl.dot` calls are the tiled GEMMs inside the loop?
-7. How does the 64 KB SRAM limit constrain `BLOCK_M`, `BLOCK_N`, and `d`?
+7. How does your shared-memory budget (`docs/my-gpu-spec.md`) constrain `BLOCK_M`, `BLOCK_N`, and `d`?
 8. Why does causal attention skip blocks, and roughly what speedup does that give?
 9. How would the Triton program map onto a CUDA block, and where would the barriers go?
 10. Name the prior unit each ingredient comes from: online softmax, tiled matmul, SRAM staging, fusion.

@@ -153,7 +153,7 @@ Report per implementation:
 | tile size | e.g. 32×32 |
 | median time | µs |
 | effective bandwidth | `2 * M * N * 4 / s / 1e9` (read + write) |
-| efficiency | vs 264 GB/s and vs your Unit 0 memcpy |
+| efficiency | vs your measured bandwidth and vs your Unit 0 memcpy |
 | correctness | exact match vs `A.t()` |
 
 ---

@@ -52,15 +52,15 @@ bytes moved  = 12  (read a: 4, read b: 4, write c: 4)
 intensity    = 1 / 12 ≈ 0.083 FLOP/byte
 ```
 
-Now place that on the RTX 2060 Max-Q roofline (numbers from the [hardware spec sheet](reference-hardware-spec-sheet.md)):
+Now place that on the roofline. The worked numbers below are the **reference GPU** (RTX 2060 Max-Q) so the arithmetic is concrete — substitute your own from `docs/my-gpu-spec.md` (run `uv run python3 scripts/calibrate_gpu.py` first; method in the [reference spec sheet](reference-hardware-spec-sheet.md)):
 
-| Quantity | Value (approx) |
+| Quantity | Reference GPU (approx) |
 |---|---|
 | Peak memory bandwidth | ~264 GB/s |
 | Peak FP32 throughput | ~4.55 TFLOP/s |
 | Roofline ridge point | ~4550 / 264 ≈ **17 FLOP/byte** |
 
-Your kernel sits at **0.083 FLOP/byte**. The ridge point is **17**. You are more than two orders of magnitude to the *left* of the ridge, buried deep in the memory-bound region.
+Your kernel sits at **0.083 FLOP/byte**. The reference ridge is **17**. You are more than two orders of magnitude to the *left* of the ridge, buried deep in the memory-bound region. Your card's ridge will differ — but at 0.083 FLOP/byte, *no* GPU's ridge could make this kernel compute-bound. That robustness is the point.
 
 The consequence, stated as a number you can predict:
 
@@ -185,7 +185,7 @@ def add_kernel(a_ptr, b_ptr, c_ptr, n_elements, BLOCK_SIZE: tl.constexpr):
 
 ## 1.6 Benchmark Requirements
 
-Use a size that fits comfortably in 6 GB. Vector add needs **three** arrays, not two:
+Use a size that fits comfortably in your VRAM (the reference card has 6 GB; scale `N` to yours). Vector add needs **three** arrays, not two:
 
 ```text
 N = 32 * 1024 * 1024 float32 elements
@@ -201,7 +201,7 @@ For each implementation, report:
 | block or tile size | threads per block or `BLOCK_SIZE` |
 | median time | microseconds |
 | effective bandwidth | `12 * N / seconds / 1e9` GB/s |
-| efficiency | measured bandwidth / 264 GB/s |
+| efficiency | measured bandwidth / your measured BW (`docs/my-gpu-spec.md`) |
 | correctness | max abs error vs `a + b` |
 
 Rules (same hygiene as Unit 0, do not regress):
@@ -276,8 +276,8 @@ The student writes every kernel body. Harnesses, correctness checks, and build g
 Before Unit 2, answer these without looking:
 
 1. How many bytes does float32 vector add move per element, and why?
-2. What is the arithmetic intensity of vector add, and where does it sit relative to the 2060's roofline ridge point?
-3. Given peak bandwidth of 264 GB/s, what is the maximum FLOP/s this kernel can achieve, and what fraction of peak compute is that?
+2. What is the arithmetic intensity of vector add, and where does it sit relative to your roofline ridge point (`docs/my-gpu-spec.md`)?
+3. Given your measured bandwidth, what is the maximum FLOP/s this kernel can achieve, and what fraction of your peak compute is that?
 4. Write the global thread index expression in CUDA.
 5. What does a grid-stride loop buy you over one-element-per-thread?
 6. What must the stride in a grid-stride loop equal, and why?

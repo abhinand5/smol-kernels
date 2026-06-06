@@ -128,7 +128,7 @@ Report per implementation:
 | shape | `M × N` |
 | median time | µs |
 | effective bandwidth | `2 * M * N * 4 / s / 1e9` (x in, y out; γ/β amortized) |
-| efficiency | vs 264 GB/s |
+| efficiency | vs your measured bandwidth (`docs/my-gpu-spec.md`) |
 | correctness | max abs error vs `F.layer_norm` |
 | stability | passes with large-mean input (e.g. `x + 1e4`) |
 

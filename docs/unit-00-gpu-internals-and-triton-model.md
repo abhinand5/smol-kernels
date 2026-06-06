@@ -21,7 +21,7 @@ Required local baseline:
 - Python environment managed by `uv`
 - PyTorch with CUDA support, and Triton
 
-On this repo's machine: CachyOS / Arch, RTX 2060 Max-Q (compute capability 7.5), 6 GB VRAM, CUDA 13.2, Python 3.14, PyTorch 2.12, Triton 3.7. The full performance spec — clocks, TFLOP/s, tensor-core data types, bandwidth, ridge points — lives in the [hardware spec sheet](reference-hardware-spec-sheet.md), the single source of truth this curriculum grades against.
+This curriculum runs on **any** CUDA GPU — it is not tied to one card. The author's reference machine is an RTX 2060 Max-Q (compute capability 7.5, 6 GB), and the units use it for concrete worked examples, but every target recalibrates to *your* hardware.
 
 Check your machine before going further:
 
@@ -38,6 +38,14 @@ if torch.cuda.is_available():
     print(torch.cuda.get_device_capability(0))
 PY
 ```
+
+Then **calibrate** — this is step one of the course:
+
+```bash
+uv run python3 scripts/calibrate_gpu.py
+```
+
+It measures your GPU's achievable bandwidth and GEMM throughput, derives your roofline ridge points, and writes **`docs/my-gpu-spec.md`** (gitignored — yours, not committed). Keep that file open while you work: when a unit says "your ridge" or "your measured bandwidth," it means the numbers in there. The method and a worked example live in the [reference spec sheet](reference-hardware-spec-sheet.md).
 
 ---
 
@@ -142,7 +150,7 @@ GPU programming adds memory *categories* the CPU world doesn't foreground:
 | Shared | on-chip, per block | small, fast, programmer-managed in CUDA |
 | Registers | on-chip, per thread | fastest, limited |
 
-For this repo, assume tensors live on the GPU unless stated otherwise (`x = torch.randn(1024, device="cuda")`). The headline numbers for the local card (from the [spec sheet](reference-hardware-spec-sheet.md)): ~264 GB/s theoretical bandwidth, up to 64 KB shared memory per SM, 6 GB VRAM.
+For this repo, assume tensors live on the GPU unless stated otherwise (`x = torch.randn(1024, device="cuda")`). Your card's headline numbers — bandwidth, shared-memory budget, VRAM — are in `docs/my-gpu-spec.md` (the reference card, for example, has ~264 GB/s theoretical bandwidth, up to 64 KB shared memory per block, 6 GB VRAM).
 
 The golden rule of this entire curriculum:
 
@@ -194,8 +202,8 @@ A kernel is **memory-bound** if its intensity is below the **ridge point**, and 
 
 ```text
 ridge point = peak compute / peak bandwidth
-            ≈ 4550 GFLOP/s / 264 GB/s
-            ≈ 17 FLOP/byte        (FP32, from the spec sheet)
+            ≈ 4550 GFLOP/s / 264 GB/s     (reference GPU)
+            ≈ 17 FLOP/byte                (FP32; yours is in docs/my-gpu-spec.md)
 ```
 
 The mental picture: plot achievable throughput against intensity. To the left of the ridge, you are climbing the slanted "bandwidth roof" — performance is capped by memory and the only thing that helps is **moving fewer bytes**. To the right, you hit the flat "compute roof" — now the math units are the limit.
@@ -203,8 +211,8 @@ The mental picture: plot achievable throughput against intensity. To the left of
 Where the units live:
 
 - **This unit (memcpy):** intensity ≈ 0 FLOP/byte — the *purest* memory-bound kernel. Pure traffic, no math. The perfect calibration tool.
-- **Units 1–5** (vector add, activation, transpose, softmax, layernorm): all far left of 17 — memory-bound. You optimize traffic.
-- **Unit 6 (GEMM):** the first kernel whose tiling pushes intensity *past* 17 into compute-bound — and the ceiling that matters jumps from the 4.55 TFLOP/s FP32 line to the ~36 TFLOP/s tensor-core line. That jump is why tensor cores exist.
+- **Units 1–5** (vector add, activation, transpose, softmax, layernorm): all far left of the ridge — memory-bound on any GPU. You optimize traffic.
+- **Unit 6 (GEMM):** the first kernel whose tiling pushes intensity *past* the ridge into compute-bound — and the ceiling that matters jumps from your FP32 line to your much-higher tensor-core line. That jump is why tensor cores exist.
 - **Unit 7 (FlashAttention):** the art of *reducing traffic* (not FLOPs) to move a kernel rightward off the memory roof.
 
 > Internalize this now: you do not "optimize a kernel" in the abstract. You first locate it on the roofline, which tells you whether your enemy is bytes or FLOPs. For almost everything you write early on, it is bytes.
@@ -251,7 +259,7 @@ y[i] = x[i]
 
 Implement both a **CUDA C++** kernel and a **Triton** kernel, then benchmark each across several block/tile sizes.
 
-**Why memcpy?** Because it has almost no math (intensity ≈ 0 — see §0.9), so performance reflects almost purely **memory throughput** and **launch overhead**. It is the cleanest possible instrument for measuring how close to the 264 GB/s ceiling your code can get, and it calibrates your intuition for every memory-bound kernel that follows.
+**Why memcpy?** Because it has almost no math (intensity ≈ 0 — see §0.9), so performance reflects almost purely **memory throughput** and **launch overhead**. It is the cleanest possible instrument for measuring how close to your memory-bandwidth ceiling your code can get, and it calibrates your intuition for every memory-bound kernel that follows.
 
 For a float32 copy:
 
@@ -303,7 +311,7 @@ Launch with `grid = (triton.cdiv(n_elements, BLOCK_SIZE),)`. Benchmark at least 
 
 ## 0.15 Benchmark Requirements
 
-Use a tensor size that fits comfortably in 6 GB:
+Use a tensor size that fits comfortably in your VRAM (the reference card has 6 GB; scale `N` to yours):
 
 ```text
 N = 32 * 1024 * 1024 float32 elements
@@ -318,7 +326,7 @@ For each implementation, report:
 | block or tile size | threads per block or `BLOCK_SIZE` |
 | median time | µs |
 | bandwidth | `N * 8 / seconds / 1e9` GB/s |
-| efficiency | measured bandwidth / 264 GB/s |
+| efficiency | measured bandwidth / your theoretical BW (`docs/my-gpu-spec.md`) |
 | correctness | max error vs input |
 
 Benchmark hygiene (from §0.11, non-negotiable):
@@ -340,7 +348,7 @@ Predict before you run:
 - **Huge** sizes: not necessarily better; can hurt occupancy.
 - The **PyTorch / library copy** is a strong, tuned baseline — matching it is a real result.
 
-A correct, coalesced copy should reach a healthy fraction of 264 GB/s. Whatever fraction you hit becomes your **practical bandwidth ceiling** — the number Units 1–5 are graded against, because none of them can move bytes faster than your memcpy does. Do not chase peak yet; chase correctness and clean measurement first.
+A correct, coalesced copy should reach a healthy fraction of your theoretical bandwidth (the calibrator already measured this — your copy should land near it). Whatever fraction you hit becomes your **practical bandwidth ceiling** — the number Units 1–5 are graded against, because none of them can move bytes faster than your memcpy does. Do not chase peak yet; chase correctness and clean measurement first.
 
 ---
 
@@ -392,7 +400,7 @@ Before Unit 1, answer these without looking:
 4. What does `blockIdx.x * blockDim.x + threadIdx.x` compute, and what does `tl.program_id(0)` correspond to conceptually?
 5. Why do CUDA kernels need bounds checks and Triton loads/stores need masks?
 6. What is coalesced memory access, and why does it matter?
-7. What is arithmetic intensity, and what is this GPU's roofline ridge point?
+7. What is arithmetic intensity, and what is your GPU's roofline ridge point (from `docs/my-gpu-spec.md`)?
 8. Why is a memcpy the purest memory-bound kernel?
 9. Why is naive wall-clock timing usually wrong for GPU kernels?
 10. Why is copy bandwidth counted as read bytes *plus* written bytes?

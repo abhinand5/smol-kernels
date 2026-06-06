@@ -161,7 +161,7 @@ Report per implementation:
 | shape | `M × N` |
 | median time | µs |
 | effective bandwidth | `2 * M * N * 4 / s / 1e9` |
-| efficiency | vs 264 GB/s |
+| efficiency | vs your measured bandwidth (`docs/my-gpu-spec.md`) |
 | correctness | max abs error vs `torch.softmax` |
 | stability | passes with large inputs (e.g. `x += 100`) without NaN |
 
