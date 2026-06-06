@@ -139,15 +139,15 @@ function RooflineHero() {
 
         {/* ridge marker */}
         <line x1="372" y1="60" x2="372" y2="300" stroke="var(--color-line)" strokeWidth="1" strokeDasharray="3 4" />
-        <text x="378" y="74" className="mono" fontSize="10" fill="var(--color-faint)">
+        <text x="372" y="70" textAnchor="middle" className="mono" fontSize="9.5" fill="var(--color-faint)">
           RIDGE
         </text>
 
-        {/* region labels */}
-        <text x="150" y="270" className="mono" fontSize="10" fill="var(--color-cool-dim)">
+        {/* region labels — placed in clear zones, off the curve and markers */}
+        <text x="108" y="184" className="mono" fontSize="10" fill="var(--color-cool-dim)">
           MEMORY-BOUND
         </text>
-        <text x="430" y="100" className="mono" fontSize="10" fill="var(--color-amber)" opacity="0.8">
+        <text x="604" y="92" textAnchor="end" className="mono" fontSize="10" fill="var(--color-amber)" opacity="0.85">
           COMPUTE-BOUND
         </text>
 
@@ -167,25 +167,25 @@ function RooflineHero() {
 
         {/* unit markers along the slope, then the flat */}
         {[
-          { x: 96, y: 282, l: '00 memcpy' },
+          { x: 96, y: 282, l: '00 memcpy', lx: 108, ly: 295, anchor: 'start' as const },
           { x: 150, y: 248 },
           { x: 210, y: 210 },
           { x: 270, y: 172 },
           { x: 330, y: 134 },
-          { x: 430, y: 108, l: '06 GEMM' },
-          { x: 560, y: 108, l: '07 FlashAttn' },
+          { x: 430, y: 108, l: '06 GEMM', lx: 430, ly: 127, anchor: 'middle' as const },
+          { x: 560, y: 108, l: '07 FlashAttn', lx: 560, ly: 127, anchor: 'middle' as const },
         ].map((p, i) => (
           <g key={i}>
-            <circle cx={p.x} cy={p.y} r="4.5" fill="var(--color-bg)" stroke={p.x >= 372 ? 'var(--color-amber)' : 'var(--color-cool)'} strokeWidth="2" />
+            <circle
+              cx={p.x}
+              cy={p.y}
+              r="4.5"
+              fill="var(--color-bg)"
+              stroke={p.x >= 372 ? 'var(--color-amber)' : 'var(--color-cool)'}
+              strokeWidth="2"
+            />
             {p.l && (
-              <text
-                x={p.x + (p.x > 500 ? -6 : 8)}
-                y={p.y - 9}
-                textAnchor={p.x > 500 ? 'end' : 'start'}
-                className="mono"
-                fontSize="9.5"
-                fill="var(--color-ink-dim)"
-              >
+              <text x={p.lx} y={p.ly} textAnchor={p.anchor} className="mono" fontSize="9.5" fill="var(--color-ink-dim)">
                 {p.l}
               </text>
             )}
