@@ -53,12 +53,11 @@ AGENTS.md           — This file
 .venv/              — Virtual environment with all dependencies
 ```
 
-## Curriculum (Init + 9 units)
+## Curriculum (9 units)
 
 | # | Unit | Skill |
 |---|------|-------|
-| Init 00 | Hardware + OS Prerequisites | CPU threads, OS boundary, driver overhead, benchmark hygiene |
-| 0 | GPU Internals + CUDA/Triton Model | SIMT, memory hierarchy, CUDA threads, Triton tiles |
+| 0 | GPU Foundations + Bandwidth | Prereqs, SIMT, memory hierarchy, roofline, coalescing, benchmark hygiene |
 | 1 | Vector Add | First CUDA `__global__` and Triton `@triton.jit` kernels |
 | 2 | Fused ReLU/GeLU | Element-wise fusion, CUDA launch config, `@triton.autotune` |
 | 3 | Matrix Transpose | Shared memory tiling, bank conflicts, tiled pointer arithmetic |
@@ -83,7 +82,7 @@ AGENTS.md           — This file
 
 ## Hardware Constraints
 
-- Tensor cores: FP16/TF32 only (no FP8, no DPAs — Turing limitation)
+- Tensor cores: FP16/INT8/INT4 only — **no TF32, no BF16, no FP8** (TF32/BF16 are Ampere SM 8.0+, FP8 is Hopper/Ada). Turing tensor-core GEMM/attention uses FP16 inputs with FP16 or FP32 accumulate.
 - Shared memory: 64 KB / SM max
 - VRAM: 6 GB — keep tensor sizes reasonable (32M elements = 128 MB is fine)
 - When moving to cloud GPUs, update this file with the new compute capability
