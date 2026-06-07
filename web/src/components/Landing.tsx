@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { units, references } from '../lib/content'
 import { RegimeDot } from './Sidebar'
+import { GitHubStar } from './GitHubStar'
 
 export function Landing() {
   return (
@@ -106,6 +107,15 @@ export function Landing() {
           </div>
         )}
       </section>
+
+      {/* ---------------- built in the open ---------------- */}
+      <footer className="mt-20 flex flex-col items-start gap-4 border-t border-line pt-8 sm:flex-row sm:items-center sm:justify-between">
+        <p className="max-w-md text-[14px] leading-relaxed text-faint">
+          Open source and free. If it helped you learn the GPU, a star helps the
+          next person find it.
+        </p>
+        <GitHubStar />
+      </footer>
     </div>
   )
 }

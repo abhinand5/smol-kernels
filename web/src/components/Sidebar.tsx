@@ -1,5 +1,6 @@
 import { NavLink, Link } from 'react-router-dom'
 import { units, references, type Regime } from '../lib/content'
+import { GitHubStar } from './GitHubStar'
 
 export function RegimeDot({ regime, size = 7 }: { regime: Regime; size?: number }) {
   const bg =
@@ -90,14 +91,9 @@ export function Sidebar() {
           </div>
         </nav>
 
-        <a
-          href="https://github.com/abhinand5/smol-kernels"
-          target="_blank"
-          rel="noreferrer"
-          className="eyebrow mt-6 px-2.5 hover:text-[var(--color-amber)]"
-        >
-          github ↗
-        </a>
+        <div className="mt-6 border-t border-[var(--color-line)] pt-4">
+          <GitHubStar className="w-full justify-center" />
+        </div>
       </div>
     </aside>
   )
