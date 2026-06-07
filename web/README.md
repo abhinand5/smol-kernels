@@ -18,6 +18,22 @@ npm run build    # type-check + production build to web/dist
 npm run preview  # serve the production build
 ```
 
+## Deploy on GitHub Pages
+
+This repo includes `.github/workflows/deploy-web.yml`. On every push to `main`,
+GitHub Actions runs `npm ci && npm run build` in `web/`, uploads `web/dist`, and
+deploys it to GitHub Pages.
+
+One-time setup in GitHub:
+
+1. Go to **Settings → Pages**.
+2. Set **Build and deployment → Source** to **GitHub Actions**.
+3. Push to `main`, then watch **Actions → Deploy web to GitHub Pages**.
+
+The workflow sets the Vite base path for a project Pages site like
+`https://<user>.github.io/<repo>/` and copies `index.html` to `404.html` so deep
+links such as `/u/unit00` route back into the SPA.
+
 ## How it works
 
 - **Content** is the markdown in `../docs/*.md`, glob-imported as raw strings at
